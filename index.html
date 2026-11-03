@@ -128,7 +128,7 @@ async function muat(manual) {
   if (sibuk) return; sibuk = true;
   try {
     const init = (tg && tg.initData) || '';
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ initData: init, aksi: 'papan' }) });
+    const r = await fetch(API, { method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'text/plain', 'ngrok-skip-browser-warning': '1' }, body: JSON.stringify({ initData: init, aksi: 'papan' }) });
     const j = await r.json().catch(() => null);
     if (!j || !j.ok) { document.getElementById('isi').innerHTML = '<div class="err">' + esc((j && j.alasan) || 'Papan tidak bisa dimuat (server ' + r.status + ').') + '</div>'; return; }
     D = j; render(); if (manual) toast('Diperbarui');
