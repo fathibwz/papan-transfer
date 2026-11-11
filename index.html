@@ -93,11 +93,16 @@ function barBelum(x) {
   if (x.telp) b.push(ikon('pr', 'phone', 'Sudah telepon ' + (x.manager || 'manager'), 'tel', x.id));
   else {
     if (x.ketik) b.push(ikon('pr', 'keyboard', x.jenis === 'cardless' ? 'Buat kode cardless otomatis' : 'Ketik otomatis di ' + (x.sumber.alat || 'perangkat'), x.ketik, x.id));
+    else if (x.bankLain && x.norek && x.jenis !== 'cardless') b.push(ikon('pr', 'arrows-shuffle', 'Buat transaksi Flip (kode unik)', 'fp', x.id));
     b.push(ikon('ok', 'check', 'Sudah ditransfer', 'ok', x.id));
   }
   if (x.norek) b.push(ikon('', 'copy', 'Salin nomor rekening', 'salin', x.id));
   b.push(ikon('no', 'x', 'Tolak', 'tolak', x.id));
   return '<div class="bar">' + b.join('') + '</div>';
+}
+function barLinda(x) {
+  if (D.peran !== 'pemilik') return '';
+  return '<div class="bar">' + ikon('pr', 'send', 'Kirim ulang kartu verifikasi ke Linda di grup', 'vr', x.id) + ikon('no', 'x', 'Tolak', 'tolak', x.id) + '</div>';
 }
 function itemHtml(x, bar) {
   const w = (x.peringatan || []).map(p => '<div class="warn ' + p.lv + '"><i class="ti ti-alert-triangle"></i><span>' + esc(p.t) + '</span></div>').join('');
@@ -112,7 +117,7 @@ function kelompok(list) {
 }
 function grupHtml(list, bar) {
   return kelompok(list).map(L => { const s = L[0].sumber, tot = L.reduce((a, x) => a + x.nominal, 0);
-    return '<div class="grp"><div class="gh' + (s.kunci === 'X' ? ' x' : '') + '"><i class="ti ti-' + (L[0].jenis === 'cardless' ? 'cash' : 'building-bank') + '"></i>From ' + esc(s.judul) + '<span class="alat">' + esc(s.alat || '') + ' · ' + rp(tot) + '</span></div>' + L.map(x => itemHtml(x, bar ? barBelum(x) : '')).join('') + '</div>'; }).join('');
+    return '<div class="grp"><div class="gh' + (s.kunci === 'X' ? ' x' : '') + '"><i class="ti ti-' + (L[0].jenis === 'cardless' ? 'cash' : 'building-bank') + '"></i>From ' + esc(s.judul) + '<span class="alat">' + esc(s.alat || '') + ' · ' + rp(tot) + '</span></div>' + L.map(x => itemHtml(x, bar === 'linda' ? barLinda(x) : bar ? barBelum(x) : '')).join('') + '</div>'; }).join('');
 }
 function miniHtml(x, akhir) { return '<div class="mini' + (x.status === 'ditolak' ? ' ditolak' : '') + '"><span class="n">' + esc(nomor(x)) + '</span><span class="w">' + esc(x.jenis === 'cardless' ? 'Tarik tunai' : (x.nama || x.teks.split('\n')[0])) + '</span><span class="a">' + rp(x.nominal) + '</span><span class="s">' + akhir + '</span></div>'; }
 function sudahHtml(x) {
@@ -136,7 +141,7 @@ function render() {
     .map(c => '<span class="chip">' + c[0] + ' <b>' + c[1] + '</b></span>').join('');
   let h = D.peran === 'lihat' ? '<div class="lihat"><i class="ti ti-eye"></i> Mode lihat saja</div>' : '';
   h += '<div class="sec"><i class="ti ti-hourglass"></i>Belum transfer</div>' + (D.belum.length ? grupHtml(D.belum, true) : '<div class="grp"><div class="empty">Tidak ada yang menunggu transfer.</div></div>');
-  if (D.linda.length) h += '<div class="sec"><i class="ti ti-player-pause"></i>Menunggu cek Linda</div>' + grupHtml(D.linda, false);
+  if (D.linda.length) h += '<div class="sec"><i class="ti ti-player-pause"></i>Menunggu cek Linda</div>' + grupHtml(D.linda, 'linda');
   h += '<div class="sec"><i class="ti ti-circle-check"></i>Sudah ditransfer</div><div class="grp">' + (D.sudah.length ? D.sudah.slice().sort((a, b) => b.jamTransfer.localeCompare(a.jamTransfer)).map(sudahHtml).join('') : '<div class="empty">Belum ada.</div>') + '</div>';
   if (D.ditolak.length) h += '<div class="sec"><i class="ti ti-ban"></i>Ditolak</div><div class="grp">' + D.ditolak.map(x => miniHtml(x, 'ditolak')).join('') + '</div>';
   if (D.tertunda.length) h += '<details><summary class="sec"><i class="ti ti-chevron-right"></i>Tertunda dari hari sebelumnya (' + D.tertunda.length + ')</summary><div class="grp">' + D.tertunda.map(x => miniHtml(x, x.tgl.slice(8, 10) + '/' + x.tgl.slice(5, 7) + (x.status === 'menunggu_invoice' ? ' · di Linda' : ''))).join('') + '</div></details>';
@@ -163,7 +168,7 @@ document.addEventListener('click', e => {
   const y = x || D.sudah.find(i => i.id === b.dataset.id);
   if (!y) return;
   const a = b.dataset.a, no = nomor(y), nm = y.jenis === 'cardless' ? 'tarik tunai' : (y.nama || ''), nom = 'Rp ' + rp(y.nominal);
-  const tanya = { ok: 'Tandai ' + no + ' (' + nm + ', ' + nom + ') SUDAH DITRANSFER?', tolak: 'TOLAK ' + no + ' (' + nm + ', ' + nom + ')?', tel: 'Sudah menelepon ' + (y.manager || 'manager') + ' untuk ' + no + '?', un: 'Batalkan centang ' + no + '? (hanya ≤ 5 menit dan belum ada bukti)' }[a];
+  const tanya = { ok: 'Tandai ' + no + ' (' + nm + ', ' + nom + ') SUDAH DITRANSFER?', tolak: 'TOLAK ' + no + ' (' + nm + ', ' + nom + ')?', tel: 'Sudah menelepon ' + (y.manager || 'manager') + ' untuk ' + no + '?', un: 'Batalkan centang ' + no + '? (hanya ≤ 5 menit dan belum ada bukti)', vr: 'Kirim ulang kartu verifikasi ' + no + ' (' + nm + ', ' + nom + ') ke Linda di grup?', fp: 'Buat transaksi Flip untuk ' + no + ' (' + nm + ', ' + nom + ')? Bot lalu meminta 3 angka kode unik.' }[a];
   if (tanya) konfirmasi(tanya, ya => { if (ya) kirim(a, y.id, b); }); else kirim(a, y.id, b);
 });
 function konfirmasi(t, cb) { if (tg && tg.showConfirm) { try { tg.showConfirm(t, cb); return; } catch (e) {} } cb(window.confirm(t)); }
